@@ -17,6 +17,15 @@ from app.schemas.category import (
     CategoryCreateRequest,
     CategoryUpdateRequest,
 )
+from app.schemas.transaction import (
+    CategoryBreakdownResponse,
+    FinancialSummaryPeriod,
+    FinancialSummaryResponse,
+    TransactionCreateRequest,
+    TransactionListResponse,
+    TransactionResponse,
+    TransactionUpdateRequest,
+)
 
 __all__ = [
     "TokenResponse",
@@ -30,4 +39,11 @@ __all__ = [
     "CategoryListResponse",
     "CategoryCreateRequest",
     "CategoryUpdateRequest",
+    "TransactionCreateRequest",
+    "TransactionUpdateRequest",
+    "TransactionResponse",
+    "TransactionListResponse",
+    "CategoryBreakdownResponse",
+    "FinancialSummaryPeriod",
+    "FinancialSummaryResponse",
 ]

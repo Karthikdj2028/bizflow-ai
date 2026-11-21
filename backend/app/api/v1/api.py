@@ -4,7 +4,7 @@ Mounts all modular sub-routers under the /api/v1 prefix.
 """
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import health, auth, workspaces, categories
+from app.api.v1.endpoints import auth, categories, health, transactions, workspaces
 
 api_router = APIRouter()
 
@@ -19,3 +19,6 @@ api_router.include_router(workspaces.router, prefix="/workspaces", tags=["Worksp
 
 # Mount category routes under /api/v1/categories
 api_router.include_router(categories.router, tags=["Categories"])
+
+# Mount transaction ledger routes under /api/v1/transactions
+api_router.include_router(transactions.router, tags=["Transactions"])

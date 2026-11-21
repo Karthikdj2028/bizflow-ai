@@ -295,26 +295,83 @@ Errors consistently return structured problem details:
 ```
 - **Response:** `201 Created` (updates invoice balance to 0.00, sets status to `PAID`, creates matching transaction entry).
 
-### 5.2 List Transactions
-- **Method / Path:** `GET /api/v1/transactions`
-- **Query Params:** `start_date`, `end_date`, `type`, `category_id`, `page`, `size`
-- **Response:** `200 OK`
-
-### 5.3 Create Direct Transaction (Manual)
+### 5.2 Create Direct Transaction
 - **Method / Path:** `POST /api/v1/transactions`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN`, `MEMBER`)
 - **Request Body:**
 ```json
 {
   "type": "EXPENSE",
-  "category_id": "550e8400-e29b-41d4-a716-446655440000",
   "amount": "340.50",
-  "transaction_date": "2026-11-20T10:15:00Z",
+  "category_id": "550e8400-e29b-41d4-a716-446655440000",
+  "transaction_date": "2026-11-20",
   "description": "Office Supplies & Printer Ink",
   "counterparty": "Office Depot",
+  "reference_number": "REC-9912",
   "payment_method": "CREDIT_CARD"
 }
 ```
+- **Rules:** Strings only for `amount` ($\le 9999999999999.99$, max 2 decimals). Date cannot be future. `extra="forbid"`. Inherits `currency` from workspace.
 - **Response:** `201 Created`
+
+### 5.3 List Workspace Transactions
+- **Method / Path:** `GET /api/v1/transactions`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN`, `MEMBER`, `VIEWER`)
+- **Query Params:** `type`, `category_id`, `start_date`, `end_date`, `search`, `sort_by`, `sort_order`, `page`, `page_size`
+- **Response:** `200 OK` (`{"items": [...], "total": 42, "page": 1, "page_size": 20, "total_pages": 3}`)
+
+### 5.4 Financial Summary & Calculation Overview
+- **Method / Path:** `GET /api/v1/transactions/summary`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN`, `MEMBER`, `VIEWER`)
+- **Query Params:** `start_date` (default: 1st of UTC month), `end_date` (default: today UTC), `category_id` (optional)
+- **Response:** `200 OK`
+```json
+{
+  "period": { "start_date": "2026-11-01", "end_date": "2026-11-21" },
+  "currency": "INR",
+  "total_income": "85000.00",
+  "total_expenses": "32450.50",
+  "net_cash_flow": "52549.50",
+  "transaction_count": 28,
+  "cumulative_net_movement": "142300.00",
+  "income_by_category": [
+    {
+      "category_id": "uuid-1",
+      "category_name": "Sales & Services",
+      "category_color": "#10B981",
+      "total_amount": "65000.00",
+      "count": 12,
+      "percentage": "76.47"
+    }
+  ],
+  "expenses_by_category": [
+    {
+      "category_id": "uuid-2",
+      "category_name": "Software & Subscriptions",
+      "category_color": "#8B5CF6",
+      "total_amount": "12450.50",
+      "count": 5,
+      "percentage": "38.37"
+    }
+  ]
+}
+```
+
+### 5.5 Get Single Transaction
+- **Method / Path:** `GET /api/v1/transactions/{id}`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN`, `MEMBER`, `VIEWER`)
+- **Response:** `200 OK`
+
+### 5.6 Update Transaction
+- **Method / Path:** `PATCH /api/v1/transactions/{id}`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN`, `MEMBER`)
+- **Request Body:** Partial fields (`amount`, `category_id`, `transaction_date`, `description`, `counterparty`, `reference_number`, `payment_method`). Empty body `{}` and `type` rejected.
+- **Response:** `200 OK`
+
+### 5.7 Soft-Delete Transaction
+- **Method / Path:** `DELETE /api/v1/transactions/{id}`
+- **Auth & Tenant Required:** Yes (`OWNER`, `ADMIN` only; `MEMBER` returns 403 Forbidden)
+- **Response:** `200 OK` (`{"message": "Transaction successfully deleted", "id": "<uuid>"}`)
 
 ---
 

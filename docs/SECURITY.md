@@ -62,10 +62,16 @@ The canonical role whitelist is defined centrally in `app.models.membership`:
 `SUPPORTED_ROLES = frozenset({"OWNER", "ADMIN", "MEMBER", "VIEWER"})`
 
 ### 3.2 Role-Permission Matrix
-- **OWNER:** Full organizational control. Manages workspace profile, billing, member deletion, role modification, and workspace deletion.
-- **ADMIN:** Operational management. Invites/removes members (cannot demote/remove OWNER or modify OWNER roles), creates and updates invoices, payments, and customers.
-- **MEMBER:** Standard operational execution. Creates/updates invoices, customers, and payments; imports CSVs; runs analytics. Cannot manage members or workspace settings.
-- **VIEWER:** Minimum read-only permission level. Can view dashboards, financial reports, invoices, and customers. Zero write or mutation capabilities.
+- **OWNER:** Full organizational control. Manages workspace profile, billing, member deletion, role modification, workspace deletion, and transaction soft-deletion.
+- **ADMIN:** Operational management. Invites/removes members (cannot demote/remove OWNER or modify OWNER roles), creates and updates invoices, payments, customers, and categories; soft-deletes transactions.
+- **MEMBER:** Standard operational execution. Creates/updates invoices, customers, payments, and transactions; imports CSVs; runs analytics and queries transaction ledgers. Cannot delete transactions (HTTP 403 Forbidden), manage categories, manage members, or modify workspace settings.
+- **VIEWER:** Minimum read-only permission level. Can view dashboards, financial reports, transaction ledgers, invoices, and customers. Zero write or mutation capabilities.
+
+### 3.3 Transaction Ledger Security Safeguards
+- **Least-Privilege Deletion:** Soft-deletion of transaction records alters cumulative net cash flow and P&L history. To preserve ledger audit integrity, `DELETE /api/v1/transactions/{id}` is restricted to `OWNER` and `ADMIN` roles. Attempts by `MEMBER` return `HTTP 403 Forbidden` (`code="INSUFFICIENT_ROLE_PERMISSIONS"`).
+- **Non-Destructive Soft-Delete:** Physical SQL deletions are prohibited; transactions are marked with `deleted_at = now()`. All operational queries and financial calculations filter `deleted_at IS NULL`.
+- **Payload Tampering Immunity (`extra="forbid"`):** Request models reject client-supplied `business_id` and `currency`. Currency is inherited from `workspace.base_currency`. Transaction `type` is immutable upon creation.
+- **Composite Foreign Key Defense-in-Depth:** In addition to service-level workspace verification, the database composite foreign key `(business_id, category_id, type)` ensures cross-tenant category assignments and type mismatches are rejected at the database engine level.
 
 ### 3.3 Fail-Closed Role Guards (`RequireRoles`)
 - `RequireRoles(*allowed_roles)` validates allowed roles at construction time against `SUPPORTED_ROLES`. Empty role sets or unrecognized role strings raise a `ValueError` immediately at startup (failing closed).
