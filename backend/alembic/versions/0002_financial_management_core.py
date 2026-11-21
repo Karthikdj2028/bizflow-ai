@@ -139,8 +139,9 @@ def upgrade() -> None:
             elif dialect_name == "sqlite":
                 bind.execute(
                     sa.text("""
-                        INSERT OR IGNORE INTO categories (id, business_id, name, type, description, color_hex, is_system_default, created_at, updated_at)
+                        INSERT INTO categories (id, business_id, name, type, description, color_hex, is_system_default, created_at, updated_at)
                         VALUES (:id, :biz_id, :name, :type, :desc, :color, 1, :now, :now)
+                        ON CONFLICT (business_id, type, lower(name)) DO NOTHING
                     """),
                     {
                         "id": cat_id,

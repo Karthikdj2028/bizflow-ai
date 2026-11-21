@@ -53,8 +53,8 @@ def get_categories(
     response_model=CategoryResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create custom category",
-    description="Create a custom category for the active workspace. Requires OWNER, ADMIN, or MEMBER role.",
-    dependencies=[Depends(RequireRoles("OWNER", "ADMIN", "MEMBER"))],
+    description="Create a custom category for the active workspace. Requires OWNER or ADMIN role.",
+    dependencies=[Depends(RequireRoles("OWNER", "ADMIN"))],
 )
 def create_category(
     request: CategoryCreateRequest,

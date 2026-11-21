@@ -67,6 +67,21 @@ def workspace_as_viewer(db: Session, auth_user: User) -> Business:
     return biz
 
 
+@pytest.fixture
+def workspace_as_member(db: Session, auth_user: User) -> Business:
+    """Create a business workspace where auth_user is MEMBER."""
+    biz = Business(name="Member Workspace", base_currency="INR")
+    db.add(biz)
+    db.flush()
+
+    membership = BusinessMembership(user_id=auth_user.id, business_id=biz.id, role="MEMBER")
+    db.add(membership)
+    seed_default_categories(db, biz.id)
+    db.commit()
+    db.refresh(biz)
+    return biz
+
+
 def test_get_categories_strictly_read_only(
     client: TestClient, user_token: str, workspace_with_owner: Business
 ):
@@ -290,6 +305,28 @@ def test_viewer_role_cannot_create_or_mutate_category(
     cat_id = get_res.json()["items"][0]["id"]
     del_res = client.delete(f"/api/v1/categories/{cat_id}", headers=headers)
     assert del_res.status_code == 403
+
+
+def test_member_role_cannot_create_category(
+    client: TestClient, user_token: str, workspace_as_member: Business
+):
+    """Verify MEMBER role can read categories but receives 403 Forbidden when creating categories."""
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Business-ID": str(workspace_as_member.id),
+    }
+    # Read allowed
+    get_res = client.get("/api/v1/categories", headers=headers)
+    assert get_res.status_code == 200
+
+    # Create forbidden (403) for MEMBER
+    post_res = client.post(
+        "/api/v1/categories",
+        json={"name": "Member Custom", "type": "EXPENSE"},
+        headers=headers,
+    )
+    assert post_res.status_code == 403
+    assert post_res.json()["code"] == "INSUFFICIENT_ROLE_PERMISSIONS"
 
 
 def test_cross_tenant_category_isolation(

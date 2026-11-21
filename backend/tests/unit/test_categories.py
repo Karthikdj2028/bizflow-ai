@@ -184,3 +184,38 @@ def test_unsupported_dialect_fails_explicitly(monkeypatch: pytest.MonkeyPatch, d
 
     with pytest.raises(NotImplementedError, match="Unsupported database dialect"):
         seed_default_categories(db, test_business.id)
+
+
+def test_sqlite_targeted_conflict_handling_index_elements(db: Session, test_business: Business):
+    """Verify SQLite seeding targets (business_id, type, lower(name)) and does not suppress untargeted conflicts."""
+    from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy import func
+
+    # Seed the 9 default categories
+    seeded = seed_default_categories(db, test_business.id)
+    assert len(seeded) == 9
+
+    # Re-seeding must be cleanly ignored by the targeted index
+    re_seeded = seed_default_categories(db, test_business.id)
+    assert len(re_seeded) == 9
+
+    # Verify that an untargeted conflict (such as primary key ID conflict with different name)
+    # is NOT suppressed and properly raises IntegrityError
+    existing_cat = seeded[0]
+    colliding_stmt = (
+        sqlite_insert(Category)
+        .values(
+            id=existing_cat.id,  # Colliding primary key ID
+            business_id=test_business.id,
+            name="Unique Non Conflicting Name",
+            type="EXPENSE",
+            is_system_default=False,
+        )
+        .on_conflict_do_nothing(
+            index_elements=["business_id", "type", func.lower(Category.name)]
+        )
+    )
+    with pytest.raises(IntegrityError):
+        db.execute(colliding_stmt)
+    db.rollback()

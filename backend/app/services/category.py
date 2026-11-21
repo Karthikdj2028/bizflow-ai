@@ -121,7 +121,9 @@ def seed_default_categories(db: Session, business_id: uuid.UUID) -> List[Categor
                     created_at=now,
                     updated_at=now,
                 )
-                .on_conflict_do_nothing()
+                .on_conflict_do_nothing(
+                    index_elements=["business_id", "type", func.lower(Category.name)]
+                )
             )
             db.execute(stmt)
         else:
