@@ -108,6 +108,10 @@ def register_user(
             )
             db.add(membership)
 
+            # 5. Atomically seed standard default categories for the new business workspace
+            from app.services.category import seed_default_categories
+            seed_default_categories(db, business.id)
+
         # Upon clean exit of with db.begin():, all entities are committed together.
         db.refresh(user)
         db.refresh(business)

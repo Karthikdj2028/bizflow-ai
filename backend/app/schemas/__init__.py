@@ -13,6 +13,12 @@ from app.schemas.workspace import (
     WorkspaceListResponse,
     WorkspaceCreateRequest,
 )
+from app.schemas.category import (
+    CategoryResponse,
+    CategoryListResponse,
+    CategoryCreateRequest,
+    CategoryUpdateRequest,
+)
 
 __all__ = [
     "TokenResponse",
@@ -24,4 +30,8 @@ __all__ = [
     "WorkspaceResponse",
     "WorkspaceListResponse",
     "WorkspaceCreateRequest",
+    "CategoryResponse",
+    "CategoryListResponse",
+    "CategoryCreateRequest",
+    "CategoryUpdateRequest",
 ]
