@@ -2,16 +2,14 @@
 
 from app.schemas.auth import (
     TokenResponse,
-    TokenPayload,
     UserRegisterRequest,
     UserLoginRequest,
     UserResponse,
     AuthResponse,
 )
 from app.schemas.workspace import (
-    WorkspaceResponse,
+    WorkspaceSummaryResponse,
     WorkspaceListResponse,
-    WorkspaceCreateRequest,
 )
 from app.schemas.category import (
     CategoryResponse,
@@ -22,14 +20,12 @@ from app.schemas.category import (
 
 __all__ = [
     "TokenResponse",
-    "TokenPayload",
     "UserRegisterRequest",
     "UserLoginRequest",
     "UserResponse",
     "AuthResponse",
-    "WorkspaceResponse",
+    "WorkspaceSummaryResponse",
     "WorkspaceListResponse",
-    "WorkspaceCreateRequest",
     "CategoryResponse",
     "CategoryListResponse",
     "CategoryCreateRequest",
