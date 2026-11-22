@@ -145,6 +145,44 @@ export interface TransactionListResponse {
   total_pages: number;
 }
 
+export interface CategoryBreakdownResponse {
+  category_id: string;
+  category_name: string;
+  category_color: string;
+  total_amount: string;
+  count: number;
+  percentage: string;
+}
+
+export interface FinancialSummaryPeriod {
+  start_date: string;
+  end_date: string;
+}
+
+export interface FinancialSummaryResponse {
+  period: FinancialSummaryPeriod;
+  currency: string;
+  total_income: string;
+  total_expenses: string;
+  net_cash_flow: string;
+  transaction_count: number;
+  cumulative_net_movement: string;
+  income_by_category: CategoryBreakdownResponse[];
+  expenses_by_category: CategoryBreakdownResponse[];
+}
+
+export interface TransactionFilterParams {
+  type?: 'INCOME' | 'EXPENSE';
+  category_id?: string;
+  start_date?: string;
+  end_date?: string;
+  search?: string;
+  sort_by?: 'transaction_date' | 'amount' | 'created_at';
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  page_size?: number;
+}
+
 export interface TransactionCreateRequest {
   type: 'INCOME' | 'EXPENSE';
   amount: string;

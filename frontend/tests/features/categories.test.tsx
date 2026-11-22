@@ -481,14 +481,14 @@ describe('Category Management Integration & Lifecycles', () => {
       expect(screen.queryByText('Chart of Accounts')).not.toBeInTheDocument();
 
       // Switch to Categories tab
-      const catTab = screen.getByRole('button', { name: 'Categories' });
+      const catTab = screen.getByRole('tab', { name: 'Categories' });
       fireEvent.click(catTab);
 
       expect(await screen.findByText('Chart of Accounts')).toBeInTheDocument();
       expect(screen.queryByTestId('custom-overview-content')).not.toBeInTheDocument();
 
       // Switch back to Overview tab
-      const overviewTab = screen.getByRole('button', { name: 'Overview' });
+      const overviewTab = screen.getByRole('tab', { name: 'Overview' });
       fireEvent.click(overviewTab);
 
       expect(screen.getByTestId('custom-overview-content')).toBeInTheDocument();
@@ -514,8 +514,8 @@ describe('Category Management Integration & Lifecycles', () => {
       expect(screen.getByTitle('Sign Out')).toBeInTheDocument();
 
       // Layout tabs
-      expect(screen.getByRole('button', { name: 'Overview' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Categories' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: 'Categories' })).toBeInTheDocument();
     });
   });
 

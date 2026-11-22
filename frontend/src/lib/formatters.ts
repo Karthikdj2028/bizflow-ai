@@ -150,3 +150,24 @@ export function formatDisplayDate(dateStr: string, locale: string = 'en-US'): st
     day: 'numeric',
   });
 }
+
+/**
+ * Human-readable display label for payment methods.
+ */
+export function formatPaymentMethod(method: string | null | undefined): string {
+  switch (method) {
+    case 'BANK_TRANSFER':
+      return 'Bank Transfer';
+    case 'CREDIT_CARD':
+      return 'Credit Card';
+    case 'DEBIT_CARD':
+      return 'Debit Card';
+    case 'CASH':
+      return 'Cash';
+    case 'UPI':
+      return 'UPI';
+    case 'OTHER':
+    default:
+      return method || 'Other';
+  }
+}
