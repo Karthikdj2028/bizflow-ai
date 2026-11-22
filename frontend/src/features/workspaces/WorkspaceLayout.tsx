@@ -4,23 +4,27 @@ import { useWorkspace } from './WorkspaceContext';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { CategoryList } from '../categories/CategoryList';
 import { TransactionLedger } from '../transactions/TransactionLedger';
+import { CustomerManagement } from '../customers/CustomerManagement';
 import { LogOut, User as UserIcon, ShieldAlert } from 'lucide-react';
 import { clsx } from 'clsx';
+
+export type WorkspaceTab = 'overview' | 'transactions' | 'categories' | 'customers';
 
 export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
   const { activeWorkspace, error: workspaceError } = useWorkspace();
-  const [activeTab, setActiveTab] = useState<'overview' | 'transactions' | 'categories'>('overview');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('overview');
 
-  const TAB_ORDER: Array<'overview' | 'transactions' | 'categories'> = [
+  const TAB_ORDER: WorkspaceTab[] = [
     'overview',
     'transactions',
     'categories',
+    'customers',
   ];
 
   const handleTabKeyDown = (
     e: React.KeyboardEvent<HTMLButtonElement>,
-    currentTab: 'overview' | 'transactions' | 'categories'
+    currentTab: WorkspaceTab
   ) => {
     const currentIndex = TAB_ORDER.indexOf(currentTab);
     let targetIndex = -1;
@@ -149,6 +153,24 @@ export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ chil
             >
               Categories
             </button>
+            <button
+              type="button"
+              id="tab-customers"
+              role="tab"
+              aria-selected={activeTab === 'customers'}
+              aria-controls="panel-customers"
+              tabIndex={activeTab === 'customers' ? 0 : -1}
+              onClick={() => setActiveTab('customers')}
+              onKeyDown={(e) => handleTabKeyDown(e, 'customers')}
+              className={clsx(
+                activeTab === 'customers'
+                  ? 'border-indigo-600 text-indigo-600 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+                'py-3 px-1 border-b-2 text-sm font-medium transition'
+              )}
+            >
+              Customers
+            </button>
           </nav>
         </div>
       </div>
@@ -174,6 +196,12 @@ export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ chil
         {activeTab === 'categories' && (
           <div id="panel-categories" role="tabpanel" aria-labelledby="tab-categories">
             <CategoryList />
+          </div>
+        )}
+
+        {activeTab === 'customers' && (
+          <div id="panel-customers" role="tabpanel" aria-labelledby="tab-customers">
+            <CustomerManagement />
           </div>
         )}
 

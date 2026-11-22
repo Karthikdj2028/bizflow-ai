@@ -203,3 +203,42 @@ export interface TransactionUpdateRequest {
   reference_number?: string | null;
   payment_method?: PaymentMethod;
 }
+
+export interface CustomerResponse {
+  id: string;
+  business_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  billing_address: string | null;
+  payment_terms_days: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerListResponse {
+  items: CustomerResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface CustomerCreateRequest {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  billing_address?: string | null;
+  payment_terms_days?: number;
+  is_active?: boolean;
+}
+
+export interface CustomerUpdateRequest {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  billing_address?: string | null;
+  payment_terms_days?: number;
+  is_active?: boolean;
+}

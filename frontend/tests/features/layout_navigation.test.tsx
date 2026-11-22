@@ -8,6 +8,7 @@ import {
 } from '../../src/features/workspaces/WorkspaceContext';
 import {
   CategoryResponse,
+  CustomerResponse,
   FinancialSummaryResponse,
   TransactionResponse,
 } from '../../src/types/api';
@@ -154,6 +155,36 @@ const summaryB: FinancialSummaryResponse = {
   expenses_by_category: [],
 };
 
+const sampleCustomersA: CustomerResponse[] = [
+  {
+    id: 'cust-a-1',
+    business_id: 'ws-a-1111-1111',
+    name: 'Acme Corporation',
+    email: 'billing@acme.com',
+    phone: '+1 555-0100',
+    billing_address: '100 Acme Way',
+    payment_terms_days: 30,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+];
+
+const sampleCustomersB: CustomerResponse[] = [
+  {
+    id: 'cust-b-1',
+    business_id: 'ws-b-2222-2222',
+    name: 'Berlin Logistics GmbH',
+    email: 'billing@berlinlogistics.de',
+    phone: '+49 30 123456',
+    billing_address: 'Friedrichstraße 10, Berlin',
+    payment_terms_days: 14,
+    is_active: true,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+  },
+];
+
 describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
   let apiRequestSpy: any;
 
@@ -204,6 +235,16 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
         return Promise.resolve({
           items: txs,
           total: txs.length,
+          page: 1,
+          page_size: 20,
+          total_pages: 1,
+        });
+      }
+      if (endpoint.startsWith('/customers')) {
+        const custs = bizId === 'ws-b-2222-2222' ? sampleCustomersB : sampleCustomersA;
+        return Promise.resolve({
+          items: custs,
+          total: custs.length,
           page: 1,
           page_size: 20,
           total_pages: 1,
@@ -279,23 +320,26 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     );
   };
 
-  it('Scenario 13: Tab Navigation switches between Overview, Transactions, Categories', async () => {
+  it('Scenario 13: Tab Navigation switches between Overview, Transactions, Categories, Customers', async () => {
     render(<TestWrapper />);
 
     // Initially Overview is active
     const overviewTab = screen.getByRole('tab', { name: /^overview$/i });
     const transactionsTab = screen.getByRole('tab', { name: /^transactions$/i });
     const categoriesTab = screen.getByRole('tab', { name: /^categories$/i });
+    const customersTab = screen.getByRole('tab', { name: /^customers$/i });
 
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(transactionsTab).toHaveAttribute('aria-selected', 'false');
     expect(categoriesTab).toHaveAttribute('aria-selected', 'false');
+    expect(customersTab).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText(/Welcome to Workspace Alpha/i)).toBeInTheDocument();
 
     // Click Transactions tab
     fireEvent.click(transactionsTab);
     expect(transactionsTab).toHaveAttribute('aria-selected', 'true');
     expect(overviewTab).toHaveAttribute('aria-selected', 'false');
+    expect(customersTab).toHaveAttribute('aria-selected', 'false');
     await waitFor(() => {
       expect(screen.getByText('US Consulting Retainer')).toBeInTheDocument();
     });
@@ -304,13 +348,25 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     fireEvent.click(categoriesTab);
     expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
     expect(transactionsTab).toHaveAttribute('aria-selected', 'false');
+    expect(customersTab).toHaveAttribute('aria-selected', 'false');
     await waitFor(() => {
       expect(screen.getByText('Chart of Accounts')).toBeInTheDocument();
+    });
+
+    // Click Customers tab
+    fireEvent.click(customersTab);
+    expect(customersTab).toHaveAttribute('aria-selected', 'true');
+    expect(categoriesTab).toHaveAttribute('aria-selected', 'false');
+    expect(overviewTab).toHaveAttribute('aria-selected', 'false');
+    await waitFor(() => {
+      expect(screen.getByText('Customer Directory')).toBeInTheDocument();
+      expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
     });
 
     // Click Overview tab again
     fireEvent.click(overviewTab);
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(customersTab).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByText(/Welcome to Workspace Alpha/i)).toBeInTheDocument();
   });
 
@@ -1246,12 +1302,13 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     });
   });
 
-  it('Scenario 29: Accessible Tab Keyboard Navigation supports Arrow keys, Home/End, and roving tabIndex', async () => {
+  it('Scenario 29: Accessible Tab Keyboard Navigation supports Arrow keys, Home/End, and roving tabIndex across all four tabs', async () => {
     render(<TestWrapper />);
 
     const overviewTab = screen.getByRole('tab', { name: /^overview$/i });
     const transactionsTab = screen.getByRole('tab', { name: /^transactions$/i });
     const categoriesTab = screen.getByRole('tab', { name: /^categories$/i });
+    const customersTab = screen.getByRole('tab', { name: /^customers$/i });
 
     // Initial state: Overview is selected with roving tabIndex=0, others have tabIndex=-1
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
@@ -1260,6 +1317,8 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     expect(transactionsTab).toHaveAttribute('tabIndex', '-1');
     expect(categoriesTab).toHaveAttribute('aria-selected', 'false');
     expect(categoriesTab).toHaveAttribute('tabIndex', '-1');
+    expect(customersTab).toHaveAttribute('aria-selected', 'false');
+    expect(customersTab).toHaveAttribute('tabIndex', '-1');
 
     // 1. Right Arrow from Overview -> Transactions
     overviewTab.focus();
@@ -1276,35 +1335,50 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     expect(transactionsTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(categoriesTab);
 
-    // 3. Right Arrow from Categories loops around -> Overview
+    // 3. Right Arrow from Categories -> Customers
     fireEvent.keyDown(categoriesTab, { key: 'ArrowRight' });
+    expect(customersTab).toHaveAttribute('aria-selected', 'true');
+    expect(customersTab).toHaveAttribute('tabIndex', '0');
+    expect(categoriesTab).toHaveAttribute('tabIndex', '-1');
+    expect(document.activeElement).toBe(customersTab);
+
+    // 4. Right Arrow from Customers loops around -> Overview
+    fireEvent.keyDown(customersTab, { key: 'ArrowRight' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(overviewTab).toHaveAttribute('tabIndex', '0');
-    expect(categoriesTab).toHaveAttribute('tabIndex', '-1');
+    expect(customersTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(overviewTab);
 
-    // 4. Left Arrow from Overview loops around -> Categories
+    // 5. Left Arrow from Overview loops around -> Customers (last tab)
     fireEvent.keyDown(overviewTab, { key: 'ArrowLeft' });
+    expect(customersTab).toHaveAttribute('aria-selected', 'true');
+    expect(customersTab).toHaveAttribute('tabIndex', '0');
+    expect(overviewTab).toHaveAttribute('tabIndex', '-1');
+    expect(document.activeElement).toBe(customersTab);
+
+    // 6. Left Arrow from Customers -> Categories
+    fireEvent.keyDown(customersTab, { key: 'ArrowLeft' });
     expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
     expect(categoriesTab).toHaveAttribute('tabIndex', '0');
+    expect(customersTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(categoriesTab);
 
-    // 5. Left Arrow from Categories -> Transactions
+    // 7. Left Arrow from Categories -> Transactions
     fireEvent.keyDown(categoriesTab, { key: 'ArrowLeft' });
     expect(transactionsTab).toHaveAttribute('aria-selected', 'true');
     expect(document.activeElement).toBe(transactionsTab);
 
-    // 6. Home key -> Overview (first tab)
+    // 8. Home key -> Overview (first tab)
     fireEvent.keyDown(transactionsTab, { key: 'Home' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(overviewTab).toHaveAttribute('tabIndex', '0');
     expect(document.activeElement).toBe(overviewTab);
 
-    // 7. End key -> Categories (last tab)
+    // 9. End key -> Customers (last tab)
     fireEvent.keyDown(overviewTab, { key: 'End' });
-    expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
-    expect(categoriesTab).toHaveAttribute('tabIndex', '0');
-    expect(document.activeElement).toBe(categoriesTab);
+    expect(customersTab).toHaveAttribute('aria-selected', 'true');
+    expect(customersTab).toHaveAttribute('tabIndex', '0');
+    expect(document.activeElement).toBe(customersTab);
   });
 
   it('Scenario 30: Workspace-Scoped Mutation Errors prevents stale mutation error from displaying in a different workspace', async () => {
@@ -1358,5 +1432,43 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
 
     // In Workspace B: modal is dismissed and mutation error does NOT leak into Workspace B
     expect(screen.queryByText('Transaction write failed in Workspace Alpha.')).not.toBeInTheDocument();
+  });
+
+  it('Scenario 31: Customers Tab Integration renders CustomerManagement and isolates data during workspace switch', async () => {
+    let capturedCtx: WorkspaceContextValue;
+    render(<TestWrapper onRenderContext={(ctx) => (capturedCtx = ctx)} />);
+
+    const customersTab = screen.getByRole('tab', { name: /^customers$/i });
+    fireEvent.click(customersTab);
+
+    expect(customersTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: /^customers$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^overview$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^transactions$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^categories$/i })).not.toBeInTheDocument();
+
+    // CustomerManagement should render with Workspace Alpha's customer
+    await waitFor(() => {
+      expect(screen.getByText('Customer Directory')).toBeInTheDocument();
+      expect(screen.getByText('Acme Corporation')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /new customer/i })).toBeInTheDocument();
+    });
+
+    // Switch workspace to Workspace Beta
+    await act(async () => {
+      await capturedCtx.switchWorkspace(mockWorkspaceB.id);
+    });
+
+    // In Workspace Beta: Customers tab remains active and renders Berlin Logistics GmbH without leaking Acme Corporation
+    await waitFor(() => {
+      expect(screen.getByText('Berlin Logistics GmbH')).toBeInTheDocument();
+      expect(screen.queryByText('Acme Corporation')).not.toBeInTheDocument();
+    });
+
+    // Navigating back to Overview unmounts CustomerManagement
+    const overviewTab = screen.getByRole('tab', { name: /^overview$/i });
+    fireEvent.click(overviewTab);
+    expect(overviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('Customer Directory')).not.toBeInTheDocument();
   });
 });
