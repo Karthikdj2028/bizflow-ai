@@ -32,7 +32,11 @@ export const ACTIVE_WORKSPACE_KEY = 'bizflow_active_workspace_id';
 
 // Listener definitions
 type UnauthorizedHandler = () => void;
-type WorkspaceErrorHandler = (error: ApiClientError, requestedWorkspaceId: string) => void;
+type WorkspaceErrorHandler = (
+  error: ApiClientError,
+  requestedWorkspaceId: string,
+  requestedWorkspaceGeneration?: number
+) => void;
 
 let onUnauthorizedCallback: UnauthorizedHandler | null = null;
 let onWorkspaceErrorCallback: WorkspaceErrorHandler | null = null;
@@ -76,7 +80,13 @@ export async function apiRequest<T>(
   }
 
   // 2. Destructure application options to prevent leakage into RequestInit
-  const { scope, targetWorkspaceId, headers: callerHeaders = {}, ...nativeOptions } = options;
+  const {
+    scope,
+    targetWorkspaceId,
+    targetWorkspaceGeneration,
+    headers: callerHeaders = {},
+    ...nativeOptions
+  } = options;
 
   // 3. Prepare headers
   const headers: Record<string, string> = {
@@ -138,7 +148,7 @@ export async function apiRequest<T>(
     if (!response.ok) {
       const err = new ApiClientError(response.statusText || `HTTP ${response.status}`, response.status);
       if (scope === 'workspace' && resolvedWorkspaceId && onWorkspaceErrorCallback) {
-        onWorkspaceErrorCallback(err, resolvedWorkspaceId);
+        onWorkspaceErrorCallback(err, resolvedWorkspaceId, targetWorkspaceGeneration);
       }
       throw err;
     }
@@ -168,7 +178,7 @@ export async function apiRequest<T>(
     } catch {
       const err = new ApiClientError(response.statusText || 'Server Error', response.status);
       if (scope === 'workspace' && resolvedWorkspaceId && onWorkspaceErrorCallback) {
-        onWorkspaceErrorCallback(err, resolvedWorkspaceId);
+        onWorkspaceErrorCallback(err, resolvedWorkspaceId, targetWorkspaceGeneration);
       }
       throw err;
     }
@@ -177,7 +187,7 @@ export async function apiRequest<T>(
     const detail = problem?.detail || response.statusText || `Request failed with status ${response.status}`;
     const err = new ApiClientError(detail, response.status, problem);
     if (scope === 'workspace' && resolvedWorkspaceId && onWorkspaceErrorCallback) {
-      onWorkspaceErrorCallback(err, resolvedWorkspaceId);
+      onWorkspaceErrorCallback(err, resolvedWorkspaceId, targetWorkspaceGeneration);
     }
     throw err;
   }
@@ -190,7 +200,7 @@ export async function apiRequest<T>(
   }
   const err = new ApiClientError(response.statusText || `HTTP Error ${response.status}`, response.status);
   if (scope === 'workspace' && resolvedWorkspaceId && onWorkspaceErrorCallback) {
-    onWorkspaceErrorCallback(err, resolvedWorkspaceId);
+    onWorkspaceErrorCallback(err, resolvedWorkspaceId, targetWorkspaceGeneration);
   }
   throw err;
 }

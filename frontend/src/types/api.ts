@@ -29,19 +29,20 @@ export interface BusinessMembership {
   created_at: string;
 }
 
-export interface WorkspaceItem {
-  business: Business;
-  membership: BusinessMembership;
+export interface WorkspaceSummaryResponse {
+  id: string;
+  name: string;
+  base_currency: string;
+  role: WorkspaceRole;
+  created_at: string;
 }
+
+export type WorkspaceItem = WorkspaceSummaryResponse;
+export type WorkspaceResponse = WorkspaceSummaryResponse;
 
 export interface WorkspaceListResponse {
-  workspaces: WorkspaceItem[];
+  items: WorkspaceSummaryResponse[];
   total: number;
-}
-
-export interface WorkspaceResponse {
-  business: Business;
-  membership: BusinessMembership;
 }
 
 export interface ProblemDetails {
@@ -60,4 +61,107 @@ export interface RequestOptions extends Omit<RequestInit, 'headers'> {
   headers?: Record<string, string>;
   scope: RequestScope;
   targetWorkspaceId?: string;
+  targetWorkspaceGeneration?: number;
+}
+
+// ==========================================
+// Category Domain Contracts
+// ==========================================
+
+export interface CategoryResponse {
+  id: string;
+  business_id: string;
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  description: string | null;
+  color_hex: string;
+  is_system_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryListResponse {
+  items: CategoryResponse[];
+  total: number;
+}
+
+export interface CategoryCreateRequest {
+  name: string;
+  type: 'INCOME' | 'EXPENSE';
+  description?: string | null;
+  color_hex?: string;
+}
+
+export interface CategoryUpdateRequest {
+  name?: string;
+  description?: string | null;
+  color_hex?: string;
+}
+
+// ==========================================
+// Transaction Domain Contracts
+// ==========================================
+
+export type PaymentMethod =
+  | 'CASH'
+  | 'BANK_TRANSFER'
+  | 'CREDIT_CARD'
+  | 'DEBIT_CARD'
+  | 'UPI'
+  | 'OTHER';
+
+export const SUPPORTED_PAYMENT_METHODS: readonly PaymentMethod[] = [
+  'CASH',
+  'BANK_TRANSFER',
+  'CREDIT_CARD',
+  'DEBIT_CARD',
+  'UPI',
+  'OTHER',
+] as const;
+
+export interface TransactionResponse {
+  id: string;
+  business_id: string;
+  category_id: string;
+  category_name: string | null;
+  category_color: string | null;
+  type: 'INCOME' | 'EXPENSE';
+  amount: string;
+  currency: string;
+  transaction_date: string;
+  description: string;
+  counterparty: string | null;
+  reference_number: string | null;
+  payment_method: PaymentMethod;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TransactionListResponse {
+  items: TransactionResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface TransactionCreateRequest {
+  type: 'INCOME' | 'EXPENSE';
+  amount: string;
+  category_id: string;
+  transaction_date: string;
+  description: string;
+  counterparty?: string | null;
+  reference_number?: string | null;
+  payment_method?: PaymentMethod;
+}
+
+export interface TransactionUpdateRequest {
+  amount?: string;
+  category_id?: string;
+  transaction_date?: string;
+  description?: string;
+  counterparty?: string | null;
+  reference_number?: string | null;
+  payment_method?: PaymentMethod;
 }

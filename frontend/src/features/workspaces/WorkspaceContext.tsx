@@ -8,23 +8,64 @@ import {
   ApiClientError,
 } from '../../lib/api';
 
-interface WorkspaceContextValue {
+export interface WorkspaceContextValue {
   workspaces: WorkspaceItem[];
   activeWorkspace: WorkspaceItem | null;
+  workspaceGeneration: number;
   isLoading: boolean;
   error: string | null;
   switchWorkspace: (candidateId: string) => Promise<boolean>;
   refreshWorkspaces: () => Promise<void>;
+  isCurrentWorkspace: (businessId: string | null | undefined, generation: number) => boolean;
 }
 
-const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(undefined);
+export const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(undefined);
 
 export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [workspaces, setWorkspaces] = useState<WorkspaceItem[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceItem | null>(null);
+  const [workspaceGeneration, setWorkspaceGeneration] = useState<number>(1);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Authoritative snapshot ref updated strictly within transition actions (outside render)
+  const authoritativeSnapshotRef = useRef<{
+    businessId: string | null;
+    generation: number;
+  }>({
+    businessId: null,
+    generation: 1,
+  });
+
+  // Centralized transition helper keeping snapshot ref and React state strictly synchronized
+  const applyWorkspaceTransition = useCallback((nextWorkspace: WorkspaceItem | null) => {
+    const nextGen = authoritativeSnapshotRef.current.generation + 1;
+    const nextBusinessId = nextWorkspace?.id ?? null;
+
+    // 1. Update authoritative snapshot synchronously in the action
+    authoritativeSnapshotRef.current = {
+      businessId: nextBusinessId,
+      generation: nextGen,
+    };
+
+    // 2. Schedule React state updates atomically
+    setActiveWorkspace(nextWorkspace);
+    setWorkspaceGeneration(nextGen);
+  }, []);
+
+  // Stable, concurrency-safe snapshot verifier (safe across async closures)
+  const isCurrentWorkspace = useCallback(
+    (businessId: string | null | undefined, generation: number): boolean => {
+      const snapshot = authoritativeSnapshotRef.current;
+      return (
+        Boolean(businessId) &&
+        snapshot.businessId === businessId &&
+        snapshot.generation === generation
+      );
+    },
+    []
+  );
 
   // Safeguard: Track previous authenticated state to identify true logout/expiry transitions
   const wasAuthenticatedRef = useRef<boolean>(false);
@@ -46,31 +87,32 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Discard if newer request began or user logged out
       if (seq !== requestSeqRef.current) return;
 
-      const items = response.workspaces || [];
+      const items = response.items || (response as any).workspaces || [];
       setWorkspaces(items);
 
       if (items.length === 0) {
-        setActiveWorkspace(null);
         sessionStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+        applyWorkspaceTransition(null);
         return;
       }
 
       // Check saved workspace candidate from sessionStorage
       const savedId = sessionStorage.getItem(ACTIVE_WORKSPACE_KEY);
-      let candidate = items.find((w) => w.business.id === savedId);
+      let candidate = items.find((w) => w.id === savedId);
 
       if (candidate) {
         try {
           // Pre-activation probe
           const currentRes = await apiRequest<WorkspaceResponse>('/workspaces/current', {
             scope: 'workspace',
-            targetWorkspaceId: candidate.business.id,
+            targetWorkspaceId: candidate.id,
+            targetWorkspaceGeneration: authoritativeSnapshotRef.current.generation,
             method: 'GET',
           });
 
           if (seq !== requestSeqRef.current) return;
-          setActiveWorkspace(currentRes);
-          sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, currentRes.business.id);
+          applyWorkspaceTransition(currentRes);
+          sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, currentRes.id);
           return;
         } catch (probeErr: unknown) {
           if (seq !== requestSeqRef.current) return;
@@ -87,17 +129,18 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
         const fallbackRes = await apiRequest<WorkspaceResponse>('/workspaces/current', {
           scope: 'workspace',
-          targetWorkspaceId: fallback.business.id,
+          targetWorkspaceId: fallback.id,
+          targetWorkspaceGeneration: authoritativeSnapshotRef.current.generation,
           method: 'GET',
         });
 
         if (seq !== requestSeqRef.current) return;
-        setActiveWorkspace(fallbackRes);
-        sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, fallbackRes.business.id);
+        applyWorkspaceTransition(fallbackRes);
+        sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, fallbackRes.id);
       } catch {
         if (seq !== requestSeqRef.current) return;
         // Even if probe fails, set fallback item so UI can present membership
-        setActiveWorkspace(fallback);
+        applyWorkspaceTransition(fallback);
       }
     } catch (err: unknown) {
       if (seq !== requestSeqRef.current) return;
@@ -107,7 +150,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [applyWorkspaceTransition]);
 
   // Coordinate with AuthProvider lifecycle
   useEffect(() => {
@@ -119,9 +162,9 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // 2. Clear state ONLY after an established authenticated session transitions to unauthenticated
     if (wasAuthenticatedRef.current && !isAuthenticated) {
       ++requestSeqRef.current; // Invalidate any pending in-flight requests
-      setActiveWorkspace(null);
-      setWorkspaces([]);
       sessionStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+      setWorkspaces([]);
+      applyWorkspaceTransition(null);
       wasAuthenticatedRef.current = false;
       return;
     }
@@ -131,27 +174,33 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       wasAuthenticatedRef.current = true;
       fetchWorkspacesAndActivate();
     }
-  }, [isAuthenticated, authLoading, fetchWorkspacesAndActivate]);
+  }, [isAuthenticated, authLoading, fetchWorkspacesAndActivate, applyWorkspaceTransition]);
 
   // Register workspace error listener for active workspace revocation
   useEffect(() => {
-    const unregister = registerWorkspaceErrorHandler((err, requestedWorkspaceId) => {
-      // Invalidate ONLY if the error occurred on the currently active workspace
+    const unregister = registerWorkspaceErrorHandler((err, requestedWorkspaceId, requestedGen) => {
+      // Invalidate ONLY if the error occurred on the currently active workspace in the authoritative snapshot
+      // AND the originating generation strictly matches the current authoritative generation!
+      const snapshot = authoritativeSnapshotRef.current;
+      const isStrictGenerationMatch =
+        typeof requestedGen === 'number' && requestedGen === snapshot.generation;
+
       if (
         err.status === 404 &&
         err.problem?.code === 'BUSINESS_NOT_FOUND' &&
-        activeWorkspace &&
-        requestedWorkspaceId === activeWorkspace.business.id
+        snapshot.businessId !== null &&
+        requestedWorkspaceId === snapshot.businessId &&
+        isStrictGenerationMatch
       ) {
-        setActiveWorkspace(null);
         sessionStorage.removeItem(ACTIVE_WORKSPACE_KEY);
+        applyWorkspaceTransition(null);
         // Re-fetch remaining valid memberships
         fetchWorkspacesAndActivate();
       }
     });
 
     return unregister;
-  }, [activeWorkspace, fetchWorkspacesAndActivate]);
+  }, [fetchWorkspacesAndActivate, applyWorkspaceTransition]);
 
   // Candidate workspace switch mutation
   const switchWorkspace = useCallback(
@@ -164,14 +213,15 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const verifiedWorkspace = await apiRequest<WorkspaceResponse>('/workspaces/current', {
           scope: 'workspace',
           targetWorkspaceId: candidateId,
+          targetWorkspaceGeneration: authoritativeSnapshotRef.current.generation,
           method: 'GET',
         });
 
         // Discard if newer switch was initiated or user logged out
         if (seq !== requestSeqRef.current) return false;
 
-        setActiveWorkspace(verifiedWorkspace);
-        sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, verifiedWorkspace.business.id);
+        applyWorkspaceTransition(verifiedWorkspace);
+        sessionStorage.setItem(ACTIVE_WORKSPACE_KEY, verifiedWorkspace.id);
         return true;
       } catch (err: unknown) {
         // Probe failure is handled locally: active workspace remains untouched!
@@ -184,7 +234,7 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         return false;
       }
     },
-    []
+    [applyWorkspaceTransition]
   );
 
   return (
@@ -192,10 +242,12 @@ export const WorkspaceProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       value={{
         workspaces,
         activeWorkspace,
+        workspaceGeneration,
         isLoading,
         error,
         switchWorkspace,
         refreshWorkspaces: fetchWorkspacesAndActivate,
+        isCurrentWorkspace,
       }}
     >
       {children}

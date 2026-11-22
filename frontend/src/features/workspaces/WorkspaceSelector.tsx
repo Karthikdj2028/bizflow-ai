@@ -25,7 +25,7 @@ export const WorkspaceSelector: React.FC = () => {
   }
 
   const handleSelect = async (candidateId: string) => {
-    if (activeWorkspace && activeWorkspace.business.id === candidateId) {
+    if (activeWorkspace && activeWorkspace.id === candidateId) {
       setIsOpen(false);
       return;
     }
@@ -36,7 +36,7 @@ export const WorkspaceSelector: React.FC = () => {
     setIsOpen(false);
   };
 
-  const role = activeWorkspace?.membership.role || 'VIEWER';
+  const role = activeWorkspace?.role || 'VIEWER';
 
   return (
     <div className="relative inline-block text-left">
@@ -48,7 +48,7 @@ export const WorkspaceSelector: React.FC = () => {
       >
         <Building2 className="w-4 h-4 text-indigo-600" />
         <span className="font-semibold text-slate-900 truncate max-w-[160px]">
-          {activeWorkspace?.business.name || 'Select Workspace'}
+          {activeWorkspace?.name || 'Select Workspace'}
         </span>
         <span
           className={`px-2 py-0.5 text-[11px] font-semibold border rounded-full ${ROLE_BADGE_STYLES[role]}`}
@@ -70,26 +70,26 @@ export const WorkspaceSelector: React.FC = () => {
             </div>
             <div className="py-1 max-h-60 overflow-y-auto">
               {workspaces.map((item) => {
-                const isSelected = activeWorkspace?.business.id === item.business.id;
+                const isSelected = activeWorkspace?.id === item.id;
                 return (
                   <button
-                    key={item.business.id}
-                    onClick={() => handleSelect(item.business.id)}
+                    key={item.id}
+                    onClick={() => handleSelect(item.id)}
                     className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 flex items-center justify-between transition group"
                   >
                     <div className="flex flex-col">
                       <span className="font-medium text-slate-900 group-hover:text-indigo-600 transition">
-                        {item.business.name}
+                        {item.name}
                       </span>
                       <span className="text-xs text-slate-400">
-                        Currency: {item.business.currency}
+                        Currency: {item.base_currency}
                       </span>
                     </div>
                     <div className="flex items-center space-x-2">
                       <span
-                        className={`px-2 py-0.5 text-[10px] font-semibold border rounded-full ${ROLE_BADGE_STYLES[item.membership.role]}`}
+                        className={`px-2 py-0.5 text-[10px] font-semibold border rounded-full ${ROLE_BADGE_STYLES[item.role]}`}
                       >
-                        {item.membership.role}
+                        {item.role}
                       </span>
                       {isSelected && <Check className="w-4 h-4 text-indigo-600" />}
                     </div>
