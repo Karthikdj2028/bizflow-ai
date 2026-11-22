@@ -248,7 +248,7 @@ def update_category(
                 )
         category.name = normalized_name
 
-    if request.description is not None:
+    if "description" in request.model_fields_set:
         category.description = request.description.strip() if request.description else None
 
     if request.color_hex is not None:

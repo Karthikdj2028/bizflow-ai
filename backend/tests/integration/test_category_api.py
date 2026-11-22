@@ -208,6 +208,61 @@ def test_update_category_success(
     assert updated["color_hex"] == "#FF5733"
 
 
+def test_update_category_description_clearing_and_omission(
+    client: TestClient, user_token: str, workspace_with_owner: Business
+):
+    """Verify description handling over REST API: omission preserves, string updates, null clears."""
+    headers = {
+        "Authorization": f"Bearer {user_token}",
+        "X-Business-ID": str(workspace_with_owner.id),
+    }
+
+    # Create category with initial description
+    create_res = client.post(
+        "/api/v1/categories",
+        json={"name": "Office Supplies", "type": "EXPENSE", "description": "Desk items"},
+        headers=headers,
+    )
+    assert create_res.status_code == 201
+    cat_id = create_res.json()["id"]
+    assert create_res.json()["description"] == "Desk items"
+
+    # 1. Omitted description: update color only, description must be preserved
+    patch_omitted = client.patch(
+        f"/api/v1/categories/{cat_id}",
+        json={"color_hex": "#336699"},
+        headers=headers,
+    )
+    assert patch_omitted.status_code == 200
+    assert patch_omitted.json()["description"] == "Desk items"
+    assert patch_omitted.json()["color_hex"] == "#336699"
+
+    # 2. String description: update description value
+    patch_string = client.patch(
+        f"/api/v1/categories/{cat_id}",
+        json={"description": "Updated stationery and pens"},
+        headers=headers,
+    )
+    assert patch_string.status_code == 200
+    assert patch_string.json()["description"] == "Updated stationery and pens"
+
+    # 3. Explicit null description: clear existing description
+    patch_null = client.patch(
+        f"/api/v1/categories/{cat_id}",
+        json={"description": None},
+        headers=headers,
+    )
+    assert patch_null.status_code == 200
+    assert patch_null.json()["description"] is None
+
+    # 4. Verify persistence in subsequent GET
+    get_res = client.get("/api/v1/categories", headers=headers)
+    assert get_res.status_code == 200
+    items = get_res.json()["items"]
+    persisted_cat = next(c for c in items if c["id"] == cat_id)
+    assert persisted_cat["description"] is None
+
+
 def test_delete_custom_category_success(
     client: TestClient, user_token: str, workspace_with_owner: Business
 ):

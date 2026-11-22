@@ -155,6 +155,43 @@ def test_update_category_success_and_duplicate_rejection(db: Session, test_busin
     assert exc_info.value.code == "CATEGORY_ALREADY_EXISTS"
 
 
+def test_update_category_description_handling(db: Session, test_business: Business):
+    """Verify description handling: omitted preserves, string updates, null clears."""
+    cat = create_category(
+        db,
+        test_business.id,
+        CategoryCreateRequest(name="Equipment", type="EXPENSE", description="Heavy machinery"),
+    )
+    assert cat.description == "Heavy machinery"
+
+    # Case 1: Description omitted -> preserve existing description
+    res1 = update_category(
+        db,
+        test_business.id,
+        cat.id,
+        CategoryUpdateRequest(color_hex="#10B981"),
+    )
+    assert res1.description == "Heavy machinery"
+
+    # Case 2: Description supplied as string -> update description
+    res2 = update_category(
+        db,
+        test_business.id,
+        cat.id,
+        CategoryUpdateRequest(description="Upgraded machinery"),
+    )
+    assert res2.description == "Upgraded machinery"
+
+    # Case 3: Description supplied as None/null -> clear description in database
+    res3 = update_category(
+        db,
+        test_business.id,
+        cat.id,
+        CategoryUpdateRequest(description=None),
+    )
+    assert res3.description is None
+
+
 def test_get_categories_for_workspace_filtering(db: Session, test_business: Business):
     """Verify get_categories_for_workspace returns all categories or filters by type."""
     seed_default_categories(db, test_business.id)
