@@ -13,6 +13,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -20,6 +21,7 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.business import Business
+    from app.models.invoice import Invoice
 
 
 class Customer(Base):
@@ -78,8 +80,15 @@ class Customer(Base):
         "Business",
         back_populates="customers",
     )
+    invoices: Mapped[list["Invoice"]] = relationship(
+        "Invoice",
+        back_populates="customer",
+        foreign_keys="[Invoice.business_id, Invoice.customer_id]",
+        overlaps="business,customer,invoices",
+    )
 
     __table_args__ = (
+        UniqueConstraint("business_id", "id", name="uq_customers_biz_id"),
         CheckConstraint(
             "payment_terms_days >= 0",
             name="chk_customers_payment_terms",

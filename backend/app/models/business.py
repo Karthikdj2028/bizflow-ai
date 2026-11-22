@@ -1,19 +1,20 @@
-from datetime import datetime, timezone
-from typing import List, Optional, TYPE_CHECKING
+"""Business workspace database model."""
+
 import uuid
-
-from sqlalchemy import DateTime, String
+from datetime import datetime, timezone
+from typing import List, TYPE_CHECKING
+from sqlalchemy import String, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
 from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.membership import BusinessMembership
     from app.models.customer import Customer
+    from app.models.invoice import Invoice
 
 
 class Business(Base):
-    """Business entity representing a tenant in the system."""
+    """Business organization workspace entity (tenant root)."""
 
     __tablename__ = "businesses"
 
@@ -23,12 +24,13 @@ class Business(Base):
     )
     name: Mapped[str] = mapped_column(
         String(255),
+        index=True,
         nullable=False,
     )
     base_currency: Mapped[str] = mapped_column(
         String(3),
+        default="INR",
         nullable=False,
-        default="USD",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -50,6 +52,11 @@ class Business(Base):
     )
     customers: Mapped[List["Customer"]] = relationship(
         "Customer",
+        back_populates="business",
+        cascade="all, delete-orphan",
+    )
+    invoices: Mapped[List["Invoice"]] = relationship(
+        "Invoice",
         back_populates="business",
         cascade="all, delete-orphan",
     )
