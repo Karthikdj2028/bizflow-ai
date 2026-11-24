@@ -70,6 +70,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.lock
 
+# Run database migrations:
+alembic upgrade head
+
+# Seed demo data (optional: seeds demo user, workspace, and 450 transactions across 9 categories):
+python -m app.services.demo_data
+
 # Start backend development server:
 uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
@@ -77,6 +83,8 @@ Verify the health endpoint:
 ```bash
 curl http://127.0.0.1:8000/health
 ```
+
+> **Windows Developers:** See [docs/WINDOWS_DEVELOPMENT_SETUP.md](docs/WINDOWS_DEVELOPMENT_SETUP.md) for complete Windows PowerShell setup, execution policy, migration, and demo seeding commands.
 
 ### 3.4 Frontend Setup & Startup
 ```bash
@@ -125,11 +133,18 @@ npm run build
 
 ## 4. Current Milestone Status
 
-- **Phase 0:** Complete (Architecture blueprints, database design, API contract, ADRs approved).
+- **Phase 0 (Architecture & Specifications):** Complete (Architecture blueprints, database design, API contract, ADRs approved).
 - **Phase 1 (Foundation, Database, Auth & Multi-Tenant Security):** Complete.
-  - **Checkpoint 1 (Repository Foundation):** Complete.
-  - **Checkpoint 2 (Database Foundation):** Complete (SQLAlchemy 2.x, Alembic, PostgreSQL models).
-  - **Checkpoint 3 (Registration & Authentication):** Complete (JWT HS256, bcrypt timing attack defense).
-  - **Checkpoint 4 (Multi-Tenant Context & RBAC):** Complete (`X-Business-ID`, `CurrentBusinessDep`, uniform 404, `RequireRoles`).
-  - **Checkpoint 5 (Integration, Frontend Shell & Security Review):** Complete (API client, Auth/Workspace shell, 35 Vitest tests, 85 SQLite tests, opt-in PG test architecture).
-- **Phase 2 (Customers, Invoices, Payments & Transaction Ledger):** Pending Developer Authorization.
+  - Checkpoint 1 (Repository Foundation): Complete.
+  - Checkpoint 2 (Database Foundation): Complete (SQLAlchemy 2.x, Alembic, PostgreSQL models).
+  - Checkpoint 3 (Registration & Authentication): Complete (JWT HS256, bcrypt timing attack defense).
+  - Checkpoint 4 (Multi-Tenant Context & RBAC): Complete (`X-Business-ID`, `CurrentBusinessDep`, uniform 404, `RequireRoles`).
+  - Checkpoint 5 (Integration, Frontend Shell & Security Review): Complete.
+- **Phase 2 (Financial Management, Customers & Invoicing):**
+  - **Phase 2.1 & 2.2 (Transaction Ledger & Categories):** Complete (Categorized ledger, P&L calculations).
+  - **Phase 2.3 & 2.4 (Workspace Navigation & Customer Management):** Complete (Customer CRUD, search, payment terms, data isolation).
+  - **Phase 2.5 (Multi-Line Invoicing):**
+    - **Phase 2.5.1 (Backend Multi-Line Invoicing):** Complete (Models, composite FKs, status transition engine, race-safe locking).
+    - **Phase 2.5.2 (Frontend Multi-Line Invoicing):** Complete (Directory table, BigInt math, line item editor, dual-status badges, 5-tab layout).
+- **Demo Data Engine:** Complete (Idempotent seeder: 50 transactions per category $\times$ 9 categories = 450 transactions).
+- **Phase 2.6 (Payment Processing & Invoice Settlement):** Planned next milestone.
