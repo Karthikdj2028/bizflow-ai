@@ -5,10 +5,11 @@ import { WorkspaceSelector } from './WorkspaceSelector';
 import { CategoryList } from '../categories/CategoryList';
 import { TransactionLedger } from '../transactions/TransactionLedger';
 import { CustomerManagement } from '../customers/CustomerManagement';
+import { InvoiceManagement } from '../invoices/InvoiceManagement';
 import { LogOut, User as UserIcon, ShieldAlert } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export type WorkspaceTab = 'overview' | 'transactions' | 'categories' | 'customers';
+export type WorkspaceTab = 'overview' | 'transactions' | 'categories' | 'customers' | 'invoices';
 
 export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const { user, logout } = useAuth();
@@ -20,6 +21,7 @@ export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ chil
     'transactions',
     'categories',
     'customers',
+    'invoices',
   ];
 
   const handleTabKeyDown = (
@@ -171,6 +173,24 @@ export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ chil
             >
               Customers
             </button>
+            <button
+              type="button"
+              id="tab-invoices"
+              role="tab"
+              aria-selected={activeTab === 'invoices'}
+              aria-controls="panel-invoices"
+              tabIndex={activeTab === 'invoices' ? 0 : -1}
+              onClick={() => setActiveTab('invoices')}
+              onKeyDown={(e) => handleTabKeyDown(e, 'invoices')}
+              className={clsx(
+                activeTab === 'invoices'
+                  ? 'border-indigo-600 text-indigo-600 font-semibold'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300',
+                'py-3 px-1 border-b-2 text-sm font-medium transition'
+              )}
+            >
+              Invoices
+            </button>
           </nav>
         </div>
       </div>
@@ -202,6 +222,12 @@ export const WorkspaceLayout: React.FC<{ children?: React.ReactNode }> = ({ chil
         {activeTab === 'customers' && (
           <div id="panel-customers" role="tabpanel" aria-labelledby="tab-customers">
             <CustomerManagement />
+          </div>
+        )}
+
+        {activeTab === 'invoices' && (
+          <div id="panel-invoices" role="tabpanel" aria-labelledby="tab-invoices">
+            <InvoiceManagement />
           </div>
         )}
 

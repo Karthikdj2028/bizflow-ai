@@ -242,3 +242,98 @@ export interface CustomerUpdateRequest {
   payment_terms_days?: number;
   is_active?: boolean;
 }
+
+// ==========================================
+// Invoice Domain Contracts (Phase 2.5)
+// ==========================================
+
+export type InvoiceStatus =
+  | 'DRAFT'
+  | 'SENT'
+  | 'OVERDUE'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'CANCELED';
+
+export type InvoicePersistedStatus =
+  | 'DRAFT'
+  | 'SENT'
+  | 'PARTIALLY_PAID'
+  | 'PAID'
+  | 'CANCELED';
+
+export interface InvoiceItemResponse {
+  id: string;
+  invoice_id: string;
+  description: string;
+  quantity: string;
+  unit_price: string;
+  line_total: string;
+  created_at: string;
+}
+
+export interface InvoiceListItemResponse {
+  id: string;
+  business_id: string;
+  customer_id: string;
+  customer_name: string;
+  invoice_number: string;
+  status: InvoiceStatus;
+  persisted_status: InvoicePersistedStatus;
+  issue_date: string;
+  due_date: string;
+  subtotal: string;
+  tax_rate: string;
+  tax_amount: string;
+  discount_amount: string;
+  total_amount: string;
+  paid_amount: string;
+  balance_due: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceDetailResponse extends InvoiceListItemResponse {
+  items: InvoiceItemResponse[];
+}
+
+export interface InvoicePaginationResponse {
+  items: InvoiceListItemResponse[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface InvoiceItemCreateRequest {
+  description: string;
+  quantity: string;
+  unit_price: string;
+}
+
+export interface InvoiceCreateRequest {
+  customer_id: string;
+  invoice_number: string;
+  issue_date: string;
+  due_date: string;
+  tax_rate?: string;
+  discount_amount?: string;
+  notes?: string | null;
+  items: InvoiceItemCreateRequest[];
+}
+
+export interface InvoiceUpdateRequest {
+  customer_id?: string;
+  invoice_number?: string;
+  issue_date?: string;
+  due_date?: string;
+  tax_rate?: string;
+  discount_amount?: string;
+  notes?: string | null;
+  items?: InvoiceItemCreateRequest[];
+}
+
+export interface InvoiceStatusTransitionRequest {
+  action: 'MARK_SENT' | 'CANCEL';
+}

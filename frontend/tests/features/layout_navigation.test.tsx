@@ -10,6 +10,7 @@ import {
   CategoryResponse,
   CustomerResponse,
   FinancialSummaryResponse,
+  InvoiceListItemResponse,
   TransactionResponse,
 } from '../../src/types/api';
 import * as apiModule from '../../src/lib/api';
@@ -185,6 +186,54 @@ const sampleCustomersB: CustomerResponse[] = [
   },
 ];
 
+const sampleInvoicesA: InvoiceListItemResponse[] = [
+  {
+    id: 'inv-a-1',
+    business_id: 'ws-a-1111-1111',
+    customer_id: 'cust-a-1',
+    customer_name: 'Acme Corporation',
+    invoice_number: 'INV-A-001',
+    status: 'DRAFT',
+    persisted_status: 'DRAFT',
+    issue_date: '2026-01-10',
+    due_date: '2026-02-09',
+    subtotal: '100.00',
+    tax_rate: '0.1000',
+    tax_amount: '10.00',
+    discount_amount: '0.00',
+    total_amount: '110.00',
+    paid_amount: '0.00',
+    balance_due: '110.00',
+    notes: 'Workspace Alpha invoice',
+    created_at: '2026-01-10T10:00:00Z',
+    updated_at: '2026-01-10T10:00:00Z',
+  },
+];
+
+const sampleInvoicesB: InvoiceListItemResponse[] = [
+  {
+    id: 'inv-b-1',
+    business_id: 'ws-b-2222-2222',
+    customer_id: 'cust-b-1',
+    customer_name: 'Berlin Logistics GmbH',
+    invoice_number: 'INV-B-001',
+    status: 'SENT',
+    persisted_status: 'SENT',
+    issue_date: '2026-01-15',
+    due_date: '2026-01-29',
+    subtotal: '500.00',
+    tax_rate: '0.0000',
+    tax_amount: '0.00',
+    discount_amount: '0.00',
+    total_amount: '500.00',
+    paid_amount: '0.00',
+    balance_due: '500.00',
+    notes: 'Workspace Beta invoice',
+    created_at: '2026-01-15T10:00:00Z',
+    updated_at: '2026-01-15T10:00:00Z',
+  },
+];
+
 describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
   let apiRequestSpy: any;
 
@@ -245,6 +294,16 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
         return Promise.resolve({
           items: custs,
           total: custs.length,
+          page: 1,
+          page_size: 20,
+          total_pages: 1,
+        });
+      }
+      if (endpoint.startsWith('/invoices')) {
+        const invs = bizId === 'ws-b-2222-2222' ? sampleInvoicesB : sampleInvoicesA;
+        return Promise.resolve({
+          items: invs,
+          total: invs.length,
           page: 1,
           page_size: 20,
           total_pages: 1,
@@ -1302,13 +1361,14 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     });
   });
 
-  it('Scenario 29: Accessible Tab Keyboard Navigation supports Arrow keys, Home/End, and roving tabIndex across all four tabs', async () => {
+  it('Scenario 29: Accessible Tab Keyboard Navigation supports Arrow keys, Home/End, and roving tabIndex across all five tabs', async () => {
     render(<TestWrapper />);
 
     const overviewTab = screen.getByRole('tab', { name: /^overview$/i });
     const transactionsTab = screen.getByRole('tab', { name: /^transactions$/i });
     const categoriesTab = screen.getByRole('tab', { name: /^categories$/i });
     const customersTab = screen.getByRole('tab', { name: /^customers$/i });
+    const invoicesTab = screen.getByRole('tab', { name: /^invoices$/i });
 
     // Initial state: Overview is selected with roving tabIndex=0, others have tabIndex=-1
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
@@ -1319,6 +1379,8 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     expect(categoriesTab).toHaveAttribute('tabIndex', '-1');
     expect(customersTab).toHaveAttribute('aria-selected', 'false');
     expect(customersTab).toHaveAttribute('tabIndex', '-1');
+    expect(invoicesTab).toHaveAttribute('aria-selected', 'false');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '-1');
 
     // 1. Right Arrow from Overview -> Transactions
     overviewTab.focus();
@@ -1342,43 +1404,57 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     expect(categoriesTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(customersTab);
 
-    // 4. Right Arrow from Customers loops around -> Overview
+    // 4. Right Arrow from Customers -> Invoices
     fireEvent.keyDown(customersTab, { key: 'ArrowRight' });
+    expect(invoicesTab).toHaveAttribute('aria-selected', 'true');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '0');
+    expect(customersTab).toHaveAttribute('tabIndex', '-1');
+    expect(document.activeElement).toBe(invoicesTab);
+
+    // 5. Right Arrow from Invoices loops around -> Overview
+    fireEvent.keyDown(invoicesTab, { key: 'ArrowRight' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(overviewTab).toHaveAttribute('tabIndex', '0');
-    expect(customersTab).toHaveAttribute('tabIndex', '-1');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(overviewTab);
 
-    // 5. Left Arrow from Overview loops around -> Customers (last tab)
+    // 6. Left Arrow from Overview loops around -> Invoices (last tab)
     fireEvent.keyDown(overviewTab, { key: 'ArrowLeft' });
+    expect(invoicesTab).toHaveAttribute('aria-selected', 'true');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '0');
+    expect(overviewTab).toHaveAttribute('tabIndex', '-1');
+    expect(document.activeElement).toBe(invoicesTab);
+
+    // 7. Left Arrow from Invoices -> Customers
+    fireEvent.keyDown(invoicesTab, { key: 'ArrowLeft' });
     expect(customersTab).toHaveAttribute('aria-selected', 'true');
     expect(customersTab).toHaveAttribute('tabIndex', '0');
-    expect(overviewTab).toHaveAttribute('tabIndex', '-1');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(customersTab);
 
-    // 6. Left Arrow from Customers -> Categories
+    // 8. Left Arrow from Customers -> Categories
     fireEvent.keyDown(customersTab, { key: 'ArrowLeft' });
     expect(categoriesTab).toHaveAttribute('aria-selected', 'true');
     expect(categoriesTab).toHaveAttribute('tabIndex', '0');
     expect(customersTab).toHaveAttribute('tabIndex', '-1');
     expect(document.activeElement).toBe(categoriesTab);
 
-    // 7. Left Arrow from Categories -> Transactions
+    // 9. Left Arrow from Categories -> Transactions
     fireEvent.keyDown(categoriesTab, { key: 'ArrowLeft' });
     expect(transactionsTab).toHaveAttribute('aria-selected', 'true');
     expect(document.activeElement).toBe(transactionsTab);
 
-    // 8. Home key -> Overview (first tab)
+    // 10. Home key -> Overview (first tab)
     fireEvent.keyDown(transactionsTab, { key: 'Home' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(overviewTab).toHaveAttribute('tabIndex', '0');
     expect(document.activeElement).toBe(overviewTab);
 
-    // 9. End key -> Customers (last tab)
+    // 11. End key -> Invoices (last tab)
     fireEvent.keyDown(overviewTab, { key: 'End' });
-    expect(customersTab).toHaveAttribute('aria-selected', 'true');
-    expect(customersTab).toHaveAttribute('tabIndex', '0');
-    expect(document.activeElement).toBe(customersTab);
+    expect(invoicesTab).toHaveAttribute('aria-selected', 'true');
+    expect(invoicesTab).toHaveAttribute('tabIndex', '0');
+    expect(document.activeElement).toBe(invoicesTab);
   });
 
   it('Scenario 30: Workspace-Scoped Mutation Errors prevents stale mutation error from displaying in a different workspace', async () => {
@@ -1470,5 +1546,44 @@ describe('Layout Navigation, Concurrency & Category Regression Suite', () => {
     fireEvent.click(overviewTab);
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByText('Customer Directory')).not.toBeInTheDocument();
+  });
+
+  it('Scenario 32: Invoices Tab Integration renders InvoiceManagement and isolates data during workspace switch', async () => {
+    let capturedCtx: WorkspaceContextValue;
+    render(<TestWrapper onRenderContext={(ctx) => (capturedCtx = ctx)} />);
+
+    const invoicesTab = screen.getByRole('tab', { name: /^invoices$/i });
+    fireEvent.click(invoicesTab);
+
+    expect(invoicesTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tabpanel', { name: /^invoices$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^overview$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^transactions$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^categories$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tabpanel', { name: /^customers$/i })).not.toBeInTheDocument();
+
+    // InvoiceManagement should render with Workspace Alpha's invoice
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /^invoices$/i })).toBeInTheDocument();
+      expect(screen.getByText('INV-A-001')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /new invoice/i })).toBeInTheDocument();
+    });
+
+    // Switch workspace to Workspace Beta
+    await act(async () => {
+      await capturedCtx.switchWorkspace(mockWorkspaceB.id);
+    });
+
+    // In Workspace Beta: Invoices tab remains active and renders INV-B-001 without leaking INV-A-001
+    await waitFor(() => {
+      expect(screen.getByText('INV-B-001')).toBeInTheDocument();
+      expect(screen.queryByText('INV-A-001')).not.toBeInTheDocument();
+    });
+
+    // Navigating back to Overview unmounts InvoiceManagement
+    const overviewTab = screen.getByRole('tab', { name: /^overview$/i });
+    fireEvent.click(overviewTab);
+    expect(overviewTab).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByText('INV-B-001')).not.toBeInTheDocument();
   });
 });
